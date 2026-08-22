@@ -171,3 +171,48 @@ flowchart TD
 - `subgraph Name ... end` groups existing nodes into a labeled box without redeclaring them — same purpose as `namespace` in class diagrams, but flowchart `subgraph`s can also be targets of edges (an arrow can point at the whole box instead of one node inside it).
 - `classDef`/`:::` styling works identically to class diagrams here: `added`/`removed` classes reuse the same muted green/red stroke convention to flag new (`Queue`) or deleted (`Legacy`) nodes at a glance.
 - The same dark-theme `classDef default` and `%%{init: ...}%%` line-color directive are reused verbatim from the class-diagram section so all three diagram types render consistently on a dark background.
+
+## C4 Container diagram (C4Container)
+
+Source: [mermaid.ai — C4 Diagrams](https://mermaid.ai/open-source/syntax/c4.html). C4 is Mermaid's **experimental** diagram type for system-context/container/component/deployment views; use it for the "solution diagram" level of a design instead of a flowchart.
+
+```mermaid
+C4Container
+    title Container diagram for Order Management System
+
+    Person(customer, "Customer", "Places and tracks orders")
+    System_Ext(email_system, "E-Mail System", "Sends order confirmation e-mails")
+    System_Ext(mainframe, "Mainframe Banking System", "Processes payments")
+
+    Container_Boundary(c1, "Order Management System") {
+        Container(api, "OrderController", "ASP.NET Core", "Accepts and validates order submissions")
+        Container(svc, "OrderService", "C# / .NET", "Coordinates order placement and persistence")
+        ContainerDb(db, "Order Database", "SQL Server", "Stores orders and line items")
+        ContainerQueue(queue, "OrderExportJob", "Azure Service Bus", "Publishes fulfilled orders downstream")
+    }
+
+    Rel(customer, api, "Submits order", "HTTPS")
+    Rel(api, svc, "Places order via")
+    Rel(svc, db, "Reads from and writes to", "EF Core")
+    Rel(svc, queue, "Publishes to", "async")
+    Rel(svc, mainframe, "Charges payment via", "sync/async, HTTPS")
+    Rel(svc, email_system, "Sends confirmation via", "SMTP")
+
+    UpdateElementStyle(customer, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#4a5a8a")
+    UpdateElementStyle(api, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(svc, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(db, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(queue, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateRelStyle(customer, api, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-10")
+    UpdateRelStyle(svc, mainframe, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="20", $offsetX="-30")
+```
+
+#### Notes
+
+- C4 has five diagram kinds selected by the first keyword: `C4Context` (system context — actors and systems only), `C4Container` (adds the containers inside one system, used above), `C4Component` (adds the components inside one container), `C4Dynamic` (numbered interaction steps, like a simplified sequence diagram), and `C4Deployment` (nests `Deployment_Node`s to show infrastructure placement). Pick the shallowest kind that answers the question the diagram needs to answer — don't drop to `C4Component` just to show one extra box.
+- Element macros encode both role and internal/external ownership in the name itself: `Person`/`Person_Ext`, `System`/`System_Ext`, `SystemDb`/`SystemDb_Ext`, `Container`/`Container_Ext`, `ContainerDb`/`ContainerDb_Ext`, `ContainerQueue`/`ContainerQueue_Ext`, and their `Component*` equivalents inside `C4Component`. The `_Ext` suffix marks something outside the team's control (`System_Ext(email_system, ...)`, `System_Ext(mainframe, ...)`) — same distinction the flowchart section draws with node shape, but here it's carried by the macro name instead.
+- `Person` shape rendering is renderer-version-dependent: `mmdc` 11.16.0 draws a head-and-body icon above the label, but other renderers (e.g. the VS Code Markdown preview's bundled Mermaid) fall back to the same plain rounded rectangle used for `System`/`Container`. Don't rely on shape alone to tell `Person` apart when the design doc might be viewed in either renderer — `customer`'s border uses a separate muted blue (`#4a5a8a`) instead of the shared `#8b949e`, so the human actor stays distinguishable by color even where the icon doesn't render.
+- `Container_Boundary(id, "label") { ... }` groups the containers owned by one system, same role as flowchart `subgraph` or class-diagram `namespace`; `System_Boundary` and the generic `Boundary(id, "label", "type")` exist for the equivalent grouping at the `C4Context`/custom level.
+- `Rel(from, to, label, ?technology)` is the base relationship; `BiRel` draws it bidirectional, and `Rel_Back`/`Rel_U`/`Rel_D`/`Rel_L`/`Rel_R` reverse the arrowhead or bias the layout direction without changing the semantics — layout in C4 is controlled by statement order and these directional hints, not an automatic layout engine.
+- **C4 has no `classDef`/`:::` and no diagram-specific `themeVariables`** (confirmed by the upstream docs: "C4 diagram is fixed style, such as css color, so different css is not provided under different skins") — this is the one diagram type in this file that can't be palette-matched with an `%%{init: ...}%%` line-color directive the way class/sequence/flowchart diagrams are. The only per-element/per-relationship overrides available are `UpdateElementStyle(id, $fontColor=..., $bgColor=..., $borderColor=...)` and `UpdateRelStyle(from, to, $textColor=..., $lineColor=..., $offsetX=..., $offsetY=...)` — apply them individually to every element/relationship that needs to match the dark palette (`customer`, `api`, `svc`, `db`, `queue` above), there is no `default` class to set once.
+- `$offsetX`/`$offsetY` on `UpdateRelStyle` nudge a relationship's label off the line when it would otherwise collide with a box or another label (`svc, mainframe` above) — there is no automatic label-collision avoidance in C4, unlike flowchart/sequence diagrams.
