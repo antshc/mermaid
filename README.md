@@ -78,3 +78,96 @@ classDiagram
 - **Composition** (`*--`): like aggregation, but the contained instances are deleted along with the container — solid diamond at the container. `OrderController *-- OrderLineItem`. Used for transient dependencies injected via DI (the DI container controls their lifetime), and for instances created with `new` inside the container class.
 - `note for ClassName "..."` attaches a free-text note to one class (`OrderService` above) — useful for a short explanation that doesn't belong in the class body.
 - `classDef added`/`classDef removed` only override `stroke`, so the change status shows as a green or red **border** on top of the same gray fill/text as every other class. Colors are deliberately muted (`#4a7a5a`, `#8a4a4a`) rather than saturated, to stay legible without drawing more attention than the class names themselves.
+
+## Sequence Diagrams
+
+Source: [mermaid.ai — Sequence diagrams](https://mermaid.ai/open-source/syntax/sequenceDiagram.html).
+
+```mermaid
+%%{init: {'themeVariables': {
+    'lineColor': '#8b949e',
+    'actorBkg': '#2a2a2a', 'actorBorder': '#8b949e', 'actorTextColor': '#c9d1d9', 'actorLineColor': '#8b949e',
+    'signalColor': '#8b949e', 'signalTextColor': '#c9d1d9',
+    'labelBoxBkgColor': '#2a2a2a', 'labelBoxBorderColor': '#8b949e', 'labelTextColor': '#c9d1d9',
+    'loopTextColor': '#c9d1d9',
+    'noteBkgColor': '#2a2a2a', 'noteBorderColor': '#8b949e', 'noteTextColor': '#c9d1d9',
+    'activationBorderColor': '#8b949e', 'activationBkgColor': '#2a2a2a',
+    'sequenceNumberColor': '#c9d1d9'
+}}}%%
+sequenceDiagram
+    actor User
+    participant Api as OrderController
+    participant Svc as OrderService
+    participant Repo as IOrderRepository
+    participant Queue as OrderExportJob
+
+    User->>Api: submit(order)
+    activate Api
+    Api->>Svc: placeOrder(order)
+    activate Svc
+    Svc->>Repo: save(order)
+    activate Repo
+    Repo-->>Svc: bool
+    deactivate Repo
+    alt order valid
+        Svc->>Queue: run()
+        Queue-->>Svc: ack
+    else order invalid
+        Svc-->>Api: throws ValidationError
+    end
+    Svc-->>Api: bool
+    deactivate Svc
+    Api-->>User: 200 OK
+    deactivate Api
+
+    note over Svc,Repo: persistence is transactional
+```
+
+#### Notes
+
+- `actor`/`participant` both declare a lifeline; `actor` renders as a stick figure and is reserved for the human/external initiator (`User`), while `participant` renders as a box and is used for system components. The `as` alias (`participant Api as OrderController`) keeps arrow lines short while still labeling the box with the real class name.
+- Solid arrow with filled head (`->>`) is a synchronous call/request; dashed arrow with filled head (`-->>`) is the matching return/response. Pair every `->>` with a `-->>` from the same target so the diagram reads as request/response, not fire-and-forget.
+- `activate`/`deactivate` (or the `+`/`-` shorthand on the arrow, e.g. `Api->>+Svc:`) draws the vertical activation bar showing how long a participant is doing work — nest them to show a call chain still on the stack (`Api` stays active while it waits on `Svc`, which stays active while it waits on `Repo`).
+- `alt`/`else`/`end` branches the diagram for mutually exclusive outcomes (validation success vs. failure) — same semantics as an `if/else`, rendered as a labeled box split by a dashed line. Use `opt`/`end` instead when there's only one conditional branch with no alternative.
+- `note over A,B: text` spans a free-text note across two lifelines (`Svc` and `Repo`) to call out a cross-cutting concern (transactionality) that doesn't belong on a single arrow.
+- Sequence diagrams have no `classDef`/`:::` styling mechanism, so matching the class diagram's dark palette requires per-property `themeVariables` instead: `actorBkg`/`labelBoxBkgColor`/`noteBkgColor`/`activationBkgColor` all use the same `#2a2a2a` fill, `actorBorder`/`labelBoxBorderColor`/`noteBorderColor`/`activationBorderColor`/`signalColor` all use the same `#8b949e` stroke, and `actorTextColor`/`labelTextColor`/`noteTextColor`/`signalTextColor`/`loopTextColor`/`sequenceNumberColor` all use the same `#c9d1d9` text color as `classDef default` in the class diagram.
+- `lineColor` is kept alongside the new variables for consistency with the class/flowchart diagrams, though `signalColor` is what actually controls arrow color in a sequence diagram.
+
+## Block Diagrams (Flowcharts)
+
+Source: [mermaid.ai — Flowcharts](https://mermaid.ai/open-source/syntax/flowchart.html).
+
+```mermaid
+%%{init: {'themeVariables': {'lineColor': '#8b949e'}}}%%
+flowchart TD
+    User(["User"])
+    Api["OrderController"]
+    Svc["OrderService"]
+    Repo[("IOrderRepository")]
+    Queue["OrderExportJob"]:::added
+    Legacy["LegacyOrderQueue"]:::removed
+
+    User --> Api
+    Api --> Svc
+    Svc --> Repo
+    Svc -- valid order --> Queue
+    Svc -. deprecated .-> Legacy
+
+    subgraph Infrastructure
+        Repo
+        Legacy
+    end
+
+    classDef default fill:#2a2a2a,stroke:#8b949e,color:#c9d1d9,stroke-width:2px
+    classDef added stroke:#4a7a5a,stroke-width:2px
+    classDef removed stroke:#8a4a4a,stroke-width:2px
+```
+
+#### Notes
+
+- Node shape signals role, not just style: `(["..."])` stadium shape for an external actor (`User`), plain `["..."]` rectangle for a process/component (`Api`, `Svc`), and `[("...")]` cylinder for a data store/repository (`Repo`) — matching the ER-diagram convention of "cylinder = storage".
+- `flowchart TD` lays the graph out top-down; `flowchart LR` (left-to-right) reads better for pipelines with many parallel branches. Pick the direction that keeps the diagram narrower than it is tall (or vice versa) for the surrounding page layout.
+- Solid arrow (`-->`) is the default/normal flow edge; a labeled solid arrow (`-- text -->`) documents the condition under which that edge is taken (`Svc -- valid order --> Queue`); a dotted arrow (`-.text.->`) marks a deprecated or exceptional path (`Svc -. deprecated .-> Legacy`) — same visual vocabulary as dashed vs. solid relationship lines in the class diagram.
+- `subgraph Name ... end` groups existing nodes into a labeled box without redeclaring them — same purpose as `namespace` in class diagrams, but flowchart `subgraph`s can also be targets of edges (an arrow can point at the whole box instead of one node inside it).
+- `classDef`/`:::` styling works identically to class diagrams here: `added`/`removed` classes reuse the same muted green/red stroke convention to flag new (`Queue`) or deleted (`Legacy`) nodes at a glance.
+- The same dark-theme `classDef default` and `%%{init: ...}%%` line-color directive are reused verbatim from the class-diagram section so all three diagram types render consistently on a dark background.
