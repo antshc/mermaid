@@ -203,6 +203,8 @@ C4Container
     UpdateElementStyle(svc, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(db, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(queue, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(email_system, $fontColor="#c9d1d9", $bgColor="#1a1a1a", $borderColor="#8b949e")
+    UpdateElementStyle(mainframe, $fontColor="#c9d1d9", $bgColor="#1a1a1a", $borderColor="#8b949e")
     UpdateRelStyle(customer, api, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-10")
     UpdateRelStyle(svc, mainframe, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="20", $offsetX="-30")
 ```
@@ -215,6 +217,7 @@ C4Container
 - `Container_Boundary(id, "label") { ... }` groups the containers owned by one system, same role as flowchart `subgraph` or class-diagram `namespace`; `System_Boundary` and the generic `Boundary(id, "label", "type")` exist for the equivalent grouping at the `C4Context`/custom level.
 - `Rel(from, to, label, ?technology)` is the base relationship; `BiRel` draws it bidirectional, and `Rel_Back`/`Rel_U`/`Rel_D`/`Rel_L`/`Rel_R` reverse the arrowhead or bias the layout direction without changing the semantics — layout in C4 is controlled by statement order and these directional hints, not an automatic layout engine.
 - **C4 has no `classDef`/`:::` and no diagram-specific `themeVariables`** (confirmed by the upstream docs: "C4 diagram is fixed style, such as css color, so different css is not provided under different skins") — this is the one diagram type in this file that can't be palette-matched with an `%%{init: ...}%%` line-color directive the way class/sequence/flowchart diagrams are. The only per-element/per-relationship overrides available are `UpdateElementStyle(id, $fontColor=..., $bgColor=..., $borderColor=...)` and `UpdateRelStyle(from, to, $textColor=..., $lineColor=..., $offsetX=..., $offsetY=...)` — apply them individually to every element/relationship that needs to match the dark palette (`customer`, `api`, `svc`, `db`, `queue` above), there is no `default` class to set once.
+- External elements (`System_Ext`, `Container_Ext`, `ContainerDb_Ext`, `ContainerQueue_Ext`) get a darker `$bgColor="#1a1a1a"` than owned elements' `#2a2a2a` (`email_system`, `mainframe` above), same `$borderColor="#8b949e"` and `$fontColor="#c9d1d9"` otherwise — the darker fill is the only signal distinguishing "outside the team's control" once the `_Ext` suffix itself renders identically to its owned counterpart.
 - `$offsetX`/`$offsetY` on `UpdateRelStyle` nudge a relationship's label off the line when it would otherwise collide with a box or another label (`svc, mainframe` above) — there is no automatic label-collision avoidance in C4, unlike flowchart/sequence diagrams.
 
 ## C4 Deployment view, modeled as C4Container
@@ -278,6 +281,7 @@ C4Container
     UpdateElementStyle(web, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(db, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(db2, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(mainframe, $fontColor="#c9d1d9", $bgColor="#1a1a1a", $borderColor="#8b949e")
 
     UpdateRelStyle(customer, mobile, $textColor="#c9d1d9", $lineColor="#8b949e")
     UpdateRelStyle(customer, spa, $textColor="#c9d1d9", $lineColor="#8b949e")
@@ -295,6 +299,6 @@ C4Container
 - `Container_Boundary` is only used for the three **top-level** `Deployment_Node`s (`mob`, `comp`, `plc`); every nested `Deployment_Node` beneath them uses the generic `Boundary(id, label, ?type)` macro instead, since `C4Container` has no second boundary macro dedicated to sub-groupings the way `Deployment_Node` can nest inside `Deployment_Node` in `C4Deployment`.
 - The `type` parameter (`Deployment_Node`'s second string argument, e.g. `"Ubuntu 16.04 LTS"`, `"Apache Tomcat 8.x"`) maps directly onto `Boundary`'s optional third argument, so no infrastructure detail is lost in the port — it just renders as a boundary subtitle instead of a deployment-node subtitle.
 - Colors match this file's C4Container section exactly (`$fontColor="#c9d1d9"`, `$bgColor="#2a2a2a"`, `$borderColor="#8b949e"` on every owned `Container`/`ContainerDb`; `$textColor="#c9d1d9"`, `$lineColor="#8b949e"` on every `Rel`), with the original `$offsetX`/`$offsetY` label-nudges preserved on top since C4's `UpdateRelStyle` combines both sets of parameters on one call.
-- `customer` (`Person`) gets the same muted blue `$borderColor="#4a5a8a"` as the `C4Container` section's `customer` above, so `Person` elements stay visually consistent across every C4 diagram in this file; `mainframe` (`System_Ext`) still gets **no** `UpdateElementStyle`, following the owned/external convention above — only `Person` and owned `Container`/`ContainerDb` nodes are styled, so `System_Ext` stays mermaid's default.
+- `customer` (`Person`) gets the same muted blue `$borderColor="#4a5a8a"` as the `C4Container` section's `customer` above, so `Person` elements stay visually consistent across every C4 diagram in this file; `mainframe` (`System_Ext`) gets the same darker `$bgColor="#1a1a1a"` external styling introduced above, keeping it visually distinct from the owned `Container`/`ContainerDb` nodes' `#2a2a2a` fill.
 - `mobile` is marked as a newly added container by giving it the `$borderColor="#4a7a5a"` green border instead of the shared `#8b949e` gray — the same muted green the class/flowchart `classDef added` convention uses to flag brand-new nodes. C4's `UpdateElementStyle` has no `:::`/`classDef` class mechanism, so the border color has to be set per-element rather than by attaching an `added` class once.
 - This diagram trades `C4Deployment`'s infrastructure-placement semantics for staying inside one diagram type: there's no way to say "this is a deployment node, not a logical grouping" once `Boundary` is reused for physical hosts, and nesting five levels deep (`plc` → `dn` → `apache` → `api`) is visually busier than the flatter groupings `C4Container` diagrams normally have.
