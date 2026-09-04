@@ -181,6 +181,7 @@ C4Container
     title Container diagram for Order Management System
 
     Person(customer, "Customer", "Places and tracks orders")
+    Person_Ext(auditor, "External Auditor", "Third-party compliance auditor")
     System_Ext(email_system, "E-Mail System", "Sends order confirmation e-mails")
     System_Ext(mainframe, "Mainframe Banking System", "Processes payments")
 
@@ -197,8 +198,10 @@ C4Container
     Rel(svc, queue, "Publishes to", "async")
     Rel(svc, mainframe, "Charges payment via", "sync/async, HTTPS")
     Rel(svc, email_system, "Sends confirmation via", "SMTP")
+    Rel(auditor, db, "Reviews order records via", "read-only export")
 
     UpdateElementStyle(customer, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#4a5a8a")
+    UpdateElementStyle(auditor, $fontColor="#c9d1d9", $bgColor="#1a1a1a", $borderColor="#4a5a8a")
     UpdateElementStyle(api, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(svc, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
     UpdateElementStyle(db, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
@@ -207,6 +210,7 @@ C4Container
     UpdateElementStyle(mainframe, $fontColor="#c9d1d9", $bgColor="#1a1a1a", $borderColor="#8b949e")
     UpdateRelStyle(customer, api, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-10")
     UpdateRelStyle(svc, mainframe, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="20", $offsetX="-30")
+    UpdateRelStyle(auditor, db, $textColor="#c9d1d9", $lineColor="#8b949e")
 ```
 
 #### Notes
@@ -218,6 +222,7 @@ C4Container
 - `Rel(from, to, label, ?technology)` is the base relationship; `BiRel` draws it bidirectional, and `Rel_Back`/`Rel_U`/`Rel_D`/`Rel_L`/`Rel_R` reverse the arrowhead or bias the layout direction without changing the semantics — layout in C4 is controlled by statement order and these directional hints, not an automatic layout engine.
 - **C4 has no `classDef`/`:::` and no diagram-specific `themeVariables`** (confirmed by the upstream docs: "C4 diagram is fixed style, such as css color, so different css is not provided under different skins") — this is the one diagram type in this file that can't be palette-matched with an `%%{init: ...}%%` line-color directive the way class/sequence/flowchart diagrams are. The only per-element/per-relationship overrides available are `UpdateElementStyle(id, $fontColor=..., $bgColor=..., $borderColor=...)` and `UpdateRelStyle(from, to, $textColor=..., $lineColor=..., $offsetX=..., $offsetY=...)` — apply them individually to every element/relationship that needs to match the dark palette (`customer`, `api`, `svc`, `db`, `queue` above), there is no `default` class to set once.
 - External elements (`System_Ext`, `Container_Ext`, `ContainerDb_Ext`, `ContainerQueue_Ext`) get a darker `$bgColor="#1a1a1a"` than owned elements' `#2a2a2a` (`email_system`, `mainframe` above), same `$borderColor="#8b949e"` and `$fontColor="#c9d1d9"` otherwise — the darker fill is the only signal distinguishing "outside the team's control" once the `_Ext` suffix itself renders identically to its owned counterpart.
+- `Person_Ext` (`auditor` above) combines both conventions instead of picking one: the darker `$bgColor="#1a1a1a"` for being external, plus the same muted blue `$borderColor="#4a5a8a"` as an owned `Person`, so an external human actor still reads as a person first and external second.
 - `$offsetX`/`$offsetY` on `UpdateRelStyle` nudge a relationship's label off the line when it would otherwise collide with a box or another label (`svc, mainframe` above) — there is no automatic label-collision avoidance in C4, unlike flowchart/sequence diagrams.
 
 ## C4 Deployment view, modeled as C4Container
