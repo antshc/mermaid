@@ -216,3 +216,85 @@ C4Container
 - `Rel(from, to, label, ?technology)` is the base relationship; `BiRel` draws it bidirectional, and `Rel_Back`/`Rel_U`/`Rel_D`/`Rel_L`/`Rel_R` reverse the arrowhead or bias the layout direction without changing the semantics — layout in C4 is controlled by statement order and these directional hints, not an automatic layout engine.
 - **C4 has no `classDef`/`:::` and no diagram-specific `themeVariables`** (confirmed by the upstream docs: "C4 diagram is fixed style, such as css color, so different css is not provided under different skins") — this is the one diagram type in this file that can't be palette-matched with an `%%{init: ...}%%` line-color directive the way class/sequence/flowchart diagrams are. The only per-element/per-relationship overrides available are `UpdateElementStyle(id, $fontColor=..., $bgColor=..., $borderColor=...)` and `UpdateRelStyle(from, to, $textColor=..., $lineColor=..., $offsetX=..., $offsetY=...)` — apply them individually to every element/relationship that needs to match the dark palette (`customer`, `api`, `svc`, `db`, `queue` above), there is no `default` class to set once.
 - `$offsetX`/`$offsetY` on `UpdateRelStyle` nudge a relationship's label off the line when it would otherwise collide with a box or another label (`svc, mainframe` above) — there is no automatic label-collision avoidance in C4, unlike flowchart/sequence diagrams.
+
+## C4 Deployment view, modeled as C4Container
+
+Source: [mermaid.ai — C4 Diagrams](https://mermaid.ai/open-source/syntax/c4.html); the classic C4-PlantUML "Internet Banking System" deployment example, ported from `C4Deployment` to `C4Container`. Each top-level `Deployment_Node` (mobile device, customer's computer, Big Bank plc data center) becomes a `Container_Boundary`, and every nested `Deployment_Node` beneath it (web browser, server host, Apache Tomcat, Oracle instance) becomes a generic `Boundary` nested inside — `C4Container` has no infrastructure-placement macro of its own, so `Boundary` is reused purely as a grouping label instead.
+
+```mermaid
+C4Container
+    title Deployment view as C4Container (Internet Banking System)
+
+    Person(customer, "Personal Banking Customer", "A customer of the bank, with personal bank accounts.")
+    System_Ext(mainframe, "Mainframe Banking System", "Stores all of the core banking information about customers, accounts, transactions, etc.")
+
+    Container_Boundary(mob, "Customer's mobile device", "Apple iOS or Android") {
+        Container(mobile, "Mobile App", "Xamarin", "Provides a limited subset of the Internet Banking functionality to customers via their mobile device.")
+    }
+
+    Container_Boundary(comp, "Customer's computer", "Microsoft Windows or Apple macOS") {
+        Boundary(browser, "Web Browser", "Google Chrome, Mozilla Firefox, Apple Safari or Microsoft Edge") {
+            Container(spa, "Single Page Application", "JavaScript and Angular", "Provides all of the Internet Banking functionality to customers via their web browser.")
+        }
+    }
+
+    Container_Boundary(plc, "Big Bank plc", "Big Bank plc data center") {
+        Boundary(dn, "bigbank-api*** x8", "Ubuntu 16.04 LTS") {
+            Boundary(apache, "Apache Tomcat", "Apache Tomcat 8.x") {
+                Container(api, "API Application", "Java and Spring MVC", "Provides Internet Banking functionality via a JSON/HTTPS API.")
+            }
+        }
+        Boundary(bb2, "bigbank-web*** x4", "Ubuntu 16.04 LTS") {
+            Boundary(apache2, "Apache Tomcat", "Apache Tomcat 8.x") {
+                Container(web, "Web Application", "Java and Spring MVC", "Delivers the static content and the Internet Banking single page application.")
+            }
+        }
+        Boundary(bigbankdb01, "bigbank-db01", "Ubuntu 16.04 LTS") {
+            Boundary(oracle, "Oracle - Primary", "Oracle 12c") {
+                ContainerDb(db, "Database", "Relational Database Schema", "Stores user registration information, hashed authentication credentials, access logs, etc.")
+            }
+        }
+        Boundary(bigbankdb02, "bigbank-db02", "Ubuntu 16.04 LTS") {
+            Boundary(oracle2, "Oracle - Secondary", "Oracle 12c") {
+                ContainerDb(db2, "Database", "Relational Database Schema", "Stores user registration information, hashed authentication credentials, access logs, etc.")
+            }
+        }
+    }
+
+    Rel(customer, mobile, "Uses")
+    Rel(customer, spa, "Uses")
+    Rel(mobile, api, "Makes API calls to", "json/HTTPS")
+    Rel(spa, api, "Makes API calls to", "json/HTTPS")
+    Rel_U(web, spa, "Delivers to the customer's web browser")
+    Rel(api, db, "Reads from and writes to", "JDBC")
+    Rel(api, db2, "Reads from and writes to", "JDBC")
+    Rel_R(db, db2, "Replicates data to")
+    Rel(api, mainframe, "Makes API calls to", "XML/HTTPS")
+
+    UpdateElementStyle(customer, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#4a5a8a")
+    UpdateElementStyle(mobile, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#4a7a5a")
+    UpdateElementStyle(spa, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(api, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(web, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(db, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+    UpdateElementStyle(db2, $fontColor="#c9d1d9", $bgColor="#2a2a2a", $borderColor="#8b949e")
+
+    UpdateRelStyle(customer, mobile, $textColor="#c9d1d9", $lineColor="#8b949e")
+    UpdateRelStyle(customer, spa, $textColor="#c9d1d9", $lineColor="#8b949e")
+    UpdateRelStyle(mobile, api, $textColor="#c9d1d9", $lineColor="#8b949e")
+    UpdateRelStyle(spa, api, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-40")
+    UpdateRelStyle(web, spa, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-40")
+    UpdateRelStyle(api, db, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-20", $offsetX="5")
+    UpdateRelStyle(api, db2, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(db, db2, $textColor="#c9d1d9", $lineColor="#8b949e", $offsetY="-10")
+    UpdateRelStyle(api, mainframe, $textColor="#c9d1d9", $lineColor="#8b949e")
+```
+
+#### Notes
+
+- `Container_Boundary` is only used for the three **top-level** `Deployment_Node`s (`mob`, `comp`, `plc`); every nested `Deployment_Node` beneath them uses the generic `Boundary(id, label, ?type)` macro instead, since `C4Container` has no second boundary macro dedicated to sub-groupings the way `Deployment_Node` can nest inside `Deployment_Node` in `C4Deployment`.
+- The `type` parameter (`Deployment_Node`'s second string argument, e.g. `"Ubuntu 16.04 LTS"`, `"Apache Tomcat 8.x"`) maps directly onto `Boundary`'s optional third argument, so no infrastructure detail is lost in the port — it just renders as a boundary subtitle instead of a deployment-node subtitle.
+- Colors match this file's C4Container section exactly (`$fontColor="#c9d1d9"`, `$bgColor="#2a2a2a"`, `$borderColor="#8b949e"` on every owned `Container`/`ContainerDb`; `$textColor="#c9d1d9"`, `$lineColor="#8b949e"` on every `Rel`), with the original `$offsetX`/`$offsetY` label-nudges preserved on top since C4's `UpdateRelStyle` combines both sets of parameters on one call.
+- `customer` (`Person`) gets the same muted blue `$borderColor="#4a5a8a"` as the `C4Container` section's `customer` above, so `Person` elements stay visually consistent across every C4 diagram in this file; `mainframe` (`System_Ext`) still gets **no** `UpdateElementStyle`, following the owned/external convention above — only `Person` and owned `Container`/`ContainerDb` nodes are styled, so `System_Ext` stays mermaid's default.
+- `mobile` is marked as a newly added container by giving it the `$borderColor="#4a7a5a"` green border instead of the shared `#8b949e` gray — the same muted green the class/flowchart `classDef added` convention uses to flag brand-new nodes. C4's `UpdateElementStyle` has no `:::`/`classDef` class mechanism, so the border color has to be set per-element rather than by attaching an `added` class once.
+- This diagram trades `C4Deployment`'s infrastructure-placement semantics for staying inside one diagram type: there's no way to say "this is a deployment node, not a logical grouping" once `Boundary` is reused for physical hosts, and nesting five levels deep (`plc` → `dn` → `apache` → `api`) is visually busier than the flatter groupings `C4Container` diagrams normally have.
