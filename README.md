@@ -307,3 +307,56 @@ C4Container
 - `customer` (`Person`) gets the same muted blue `$borderColor="#4a5a8a"` as the `C4Container` section's `customer` above, so `Person` elements stay visually consistent across every C4 diagram in this file; `mainframe` (`System_Ext`) gets the same darker `$bgColor="#1a1a1a"` external styling introduced above, keeping it visually distinct from the owned `Container`/`ContainerDb` nodes' `#2a2a2a` fill.
 - `mobile` is marked as a newly added container by giving it the `$borderColor="#4a7a5a"` green border instead of the shared `#8b949e` gray — the same muted green the class/flowchart `classDef added` convention uses to flag brand-new nodes. C4's `UpdateElementStyle` has no `:::`/`classDef` class mechanism, so the border color has to be set per-element rather than by attaching an `added` class once.
 - This diagram trades `C4Deployment`'s infrastructure-placement semantics for staying inside one diagram type: there's no way to say "this is a deployment node, not a logical grouping" once `Boundary` is reused for physical hosts, and nesting five levels deep (`plc` → `dn` → `apache` → `api`) is visually busier than the flatter groupings `C4Container` diagrams normally have.
+
+## Swimlane Diagrams (Frontend / REST API / Database)
+
+Source: [mermaid.ai — Swimlanes, Good Practices](https://mermaid.ai/open-source/syntax/swimlanes.html#good-practices). Ported to this file's Order Management/e-commerce domain (`OrderController`, `OrderService`, `IOrderRepository`) so it reads as one more style on the same running example as the class/sequence/flowchart/C4 sections, rather than a one-off ZIC scenario; the original ZIC Bundle Upgrade worked example this was adapted from still lives in [diagramv2.md](diagramv2.md). Colors follow the same dark-theme palette as the rest of this file, applied to `swimlane-beta` via the flowchart-style `classDef default` mechanism since its nodes/edges use flowchart syntax.
+
+```mermaid
+%%{init: {'themeVariables': {'lineColor': '#8b949e'}}}%%
+swimlane-beta TB
+  subgraph frontend [Frontend]
+    submit[Customer clicks Place Order]
+    showResult([Show confirmation / error])
+  end
+
+  subgraph restApi [REST API - OrderController]
+    validate{Order valid and in stock?}
+    placeOrder[OrderService.placeOrder]
+    respond200[Respond 200 + order id]
+    respond400[Respond 400 + error]
+  end
+
+  subgraph database [Database - IOrderRepository]
+    persistOrder[Persist order with state Placed]
+  end
+
+  submit -->|POST orders with order payload| validate
+  validate -->|No| respond400
+  validate -->|Yes| placeOrder
+  placeOrder -->|save order| persistOrder
+  persistOrder -->|order id| respond200
+  respond200 -->|200 OK with order id| showResult
+  respond400 -->|400 Bad Request| showResult
+
+  classDef default fill:#242424,stroke:#8b949e,color:#c9d1d9,stroke-width:2px
+  class submit,placeOrder,persistOrder process
+  class showResult event
+  class validate decision
+  class respond200 process
+  class respond400 errorPath
+```
+
+#### Notes
+
+- Rule applied: `frontend` / `restApi` / `database` lanes each own one kind of responsibility; `validate` sits in `restApi` since that's where `OrderController` makes the accept/reject decision before delegating to `OrderService`; every cross-lane arrow is labeled with what's handed off (request, response, condition) — matching the "Places order via" / "Reads from and writes to" relationships in this file's C4 Container section.
+- `classDef default` reuses this file's dark fill/stroke/text triple (`#2a2a2a`/`#8b949e`/`#c9d1d9` elsewhere; `#242424` for the swimlane's own decision/default fill) so the swimlane matches the class/sequence/flowchart/C4 diagrams above; `respond400` gets the same muted-red `errorPath` convention (`#8a4a4a` stroke) used for `removed` nodes in the class/flowchart sections, to flag the failure branch without a saturated color.
+- Long processes are kept readable by splitting into multiple diagrams rather than one large swimlane — see [diagramv2.md](diagramv2.md) for the original two-diagram (start/poll) worked example this section was adapted from, including its dotted repeat-until-terminal polling loop.
+
+
+#### Rules
+- Make each lane mean one kind of ownership (Frontend, REST API, Database).
+- Label cross-lane handoffs with what's passed (request, response, condition).
+- Keep long processes readable by splitting into multiple diagrams (start, then poll).
+- Use stable, short node ids; put descriptive text in labels.
+- Put decisions in the lane that owns/makes them.
