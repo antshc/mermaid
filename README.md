@@ -177,6 +177,11 @@ flowchart TD
 Source: [mermaid.ai — C4 Diagrams](https://mermaid.ai/open-source/syntax/c4.html). C4 is Mermaid's **experimental** diagram type for system-context/container/component/deployment views; use it for the "solution diagram" level of a design instead of a flowchart.
 
 ```mermaid
+---
+config:
+  c4:
+    c4ShapePadding: 20
+---
 C4Container
     title Container diagram for Order Management System
 
@@ -230,7 +235,13 @@ C4Container
 Source: [mermaid.ai — C4 Diagrams](https://mermaid.ai/open-source/syntax/c4.html); the classic C4-PlantUML "Internet Banking System" deployment example, ported from `C4Deployment` to `C4Container`. Each top-level `Deployment_Node` (mobile device, customer's computer, Big Bank plc data center) becomes a `Container_Boundary`, and every nested `Deployment_Node` beneath it (web browser, server host, Apache Tomcat, Oracle instance) becomes a generic `Boundary` nested inside — `C4Container` has no infrastructure-placement macro of its own, so `Boundary` is reused purely as a grouping label instead.
 
 ```mermaid
+---
+config:
+  c4:
+    c4ShapePadding: 20
+---
 C4Container
+
     title Deployment view as C4Container (Internet Banking System)
 
     Person(customer, "Personal Banking Customer", "A customer of the bank, with personal bank accounts.")
